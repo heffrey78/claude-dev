@@ -10,6 +10,8 @@ import {
 	bedrockModels,
 	openRouterDefaultModelId,
 	openRouterModels,
+	ollamaDefaultModelId,
+	ollamaModels
 } from "../../../src/shared/api"
 
 interface ApiOptionsProps {
@@ -69,6 +71,7 @@ const ApiOptions: React.FC<ApiOptionsProps> = ({ showModelOptions, apiConfigurat
 					<VSCodeOption value="anthropic">Anthropic</VSCodeOption>
 					<VSCodeOption value="bedrock">AWS Bedrock</VSCodeOption>
 					<VSCodeOption value="openrouter">OpenRouter</VSCodeOption>
+					<VSCodeOption value="ollama">ollama</VSCodeOption>
 				</VSCodeDropdown>
 			</div>
 
@@ -116,6 +119,22 @@ const ApiOptions: React.FC<ApiOptionsProps> = ({ showModelOptions, apiConfigurat
 						</VSCodeLink>{" "}
 						<span style={{ color: "var(--vscode-errorForeground)" }}>
 							(<span style={{ fontWeight: 500 }}>Note:</span> OpenRouter support is experimental and may
+							not work well with large files.)
+						</span>
+					</p>
+				</div>
+			)}
+
+			{selectedProvider === "ollama" && (
+				<div>
+					<p
+						style={{
+							fontSize: "12px",
+							marginTop: "5px",
+							color: "var(--vscode-descriptionForeground)",
+						}}>
+						<span style={{ color: "var(--vscode-errorForeground)" }}>
+							(<span style={{ fontWeight: 500 }}>Note:</span> ollama support is experimental and may
 							not work well with large files.)
 						</span>
 					</p>
@@ -196,6 +215,7 @@ const ApiOptions: React.FC<ApiOptionsProps> = ({ showModelOptions, apiConfigurat
 						{selectedProvider === "anthropic" && createDropdown(anthropicModels)}
 						{selectedProvider === "openrouter" && createDropdown(openRouterModels)}
 						{selectedProvider === "bedrock" && createDropdown(bedrockModels)}
+						{selectedProvider === "ollama" && createDropdown(ollamaModels)}
 					</div>
 
 					<ModelInfoView modelInfo={selectedModelInfo} />
@@ -299,6 +319,8 @@ export function normalizeApiConfiguration(apiConfiguration?: ApiConfiguration) {
 			return getProviderData(openRouterModels, openRouterDefaultModelId)
 		case "bedrock":
 			return getProviderData(bedrockModels, bedrockDefaultModelId)
+		case "ollama":
+			return getProviderData(ollamaModels, ollamaDefaultModelId)
 	}
 }
 

@@ -1,4 +1,4 @@
-export type ApiProvider = "anthropic" | "openrouter" | "bedrock"
+export type ApiProvider = "anthropic" | "openrouter" | "bedrock" | "ollama"
 
 export interface ApiHandlerOptions {
 	apiModelId?: ApiModelId
@@ -25,7 +25,7 @@ export interface ModelInfo {
 	cacheReadsPrice?: number
 }
 
-export type ApiModelId = AnthropicModelId | OpenRouterModelId | BedrockModelId
+export type ApiModelId = AnthropicModelId | OpenRouterModelId | BedrockModelId | ollamaModelId
 
 // Anthropic
 // https://docs.anthropic.com/en/docs/about-claude/models
@@ -67,6 +67,41 @@ export const anthropicModels = {
 		cacheReadsPrice: 0.03,
 	},
 } as const satisfies Record<string, ModelInfo> // as const assertion makes the object deeply readonly
+
+// ollama
+// https://ollama.com
+export type ollamaModelId = keyof typeof ollamaModels
+export const ollamaDefaultModelId: ollamaModelId = "llama3.1"
+export const ollamaModels = {
+	"llama3.1": {
+		maxTokens: 4096,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0.0,
+		outputPrice: 0.0,
+	},
+	"mistral-nemo": {
+		maxTokens: 4096,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 15.0,
+		outputPrice: 75.0,
+	},
+	"nuextract": {
+		maxTokens: 4096,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 15.0,
+		outputPrice: 75.0,
+	},
+	"finalend/hermes-3-llama-3.1": {
+		maxTokens: 4096,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 15.0,
+		outputPrice: 75.0,
+	},
+} as const satisfies Record<string, ModelInfo>
 
 // AWS Bedrock
 // https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html

@@ -146,6 +146,7 @@
     "serialize-error": "^11.0.3",
     "tree-kill": "^1.2.2",
     "tree-sitter-wasms": "^0.1.11",
-    "web-tree-sitter": "^0.22.6"
+    "web-tree-sitter": "^0.22.6",
+    "ollama": "^0.5.8"
   }
 }
