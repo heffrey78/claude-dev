@@ -4,13 +4,19 @@ import { AnthropicHandler } from "./anthropic"
 import { AwsBedrockHandler } from "./bedrock"
 import { OpenRouterHandler } from "./openrouter"
 import { OllamaHandler } from "./ollama"
+import { KoduHandler } from "./kodu"
+
+export interface ApiHandlerMessageResponse {
+	message: Anthropic.Messages.Message
+	userCredits?: number
+}
 
 export interface ApiHandler {
 	createMessage(
 		systemPrompt: string,
 		messages: Anthropic.Messages.MessageParam[],
 		tools: Anthropic.Messages.Tool[]
-	): Promise<Anthropic.Messages.Message>
+	): Promise<ApiHandlerMessageResponse>
 
 	createUserReadableRequest(
 		userContent: Array<
@@ -35,6 +41,8 @@ export function buildApiHandler(configuration: ApiConfiguration): ApiHandler {
 			return new AwsBedrockHandler(options)
 		case "ollama":
 			return new OllamaHandler(options)
+		case "kodu":
+			return new KoduHandler(options)
 		default:
 			return new AnthropicHandler(options)
 	}

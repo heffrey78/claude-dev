@@ -232,7 +232,7 @@ export class OllamaHandler implements ApiHandler {
 		systemPrompt: string,
 		messages: Anthropic.Messages.MessageParam[],
 		tools: Anthropic.Messages.Tool[]
-	): Promise<Anthropic.Messages.Message> {
+	): Promise<ApiHandlerMessageResponse> {
 		const modelId = this.getModel().id
 		// Convert Anthropic messages to Ollama format
 		const ollamaMessages = this.convertToOllamaMessages(ollamaSystemPrompt.toString(), messages)
@@ -270,7 +270,7 @@ export class OllamaHandler implements ApiHandler {
 			);
 		}
 
-		return anthropicMessage
+		return { message: anthropicMessage }
 	}
 
 	convertOllamaToolToAnthropicToolUseBlock(ollamaMessage: any): Anthropic.ToolUseBlock[] {

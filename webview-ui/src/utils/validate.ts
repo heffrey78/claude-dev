@@ -18,6 +18,11 @@ export function validateApiConfiguration(apiConfiguration?: ApiConfiguration): s
 					return "You must provide a valid API key or choose a different provider."
 				}
 				break
+			case "kodu":
+				if (!apiConfiguration.koduApiKey) {
+					return "You must sign in to Kodu to use it as an API provider."
+				}
+				break
 		}
 	}
 	return undefined
