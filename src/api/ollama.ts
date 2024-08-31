@@ -1,5 +1,5 @@
 import { Anthropic } from "@anthropic-ai/sdk"
-import { ApiHandler, withoutImageData } from "."
+import { ApiHandler, ApiHandlerMessageResponse, withoutImageData } from "."
 import {
 	ApiHandlerOptions,
 	ModelInfo,
@@ -15,6 +15,19 @@ import osName from "os-name"
 import * as vscode from "vscode"
 
 const cwd = vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0) ?? path.join(os.homedir(), "Desktop");
+const planningPrompt =
+	() => `As a coding assistant, create a software development plan. Break down the problem into a set of steps that can be executed sequentially.
+	EXAMPLE PLAN:
+	- Define the project structure and create directores and dummy files.
+	- Read reference files containing interfaces to be implemented.
+	- Implement interface using existing file {filename}.
+	- Implement business logic using existing file {filename}.
+	- Implement entry point logic using existing file {filename}.
+	- Execute entry point in terminal.
+	
+	DO writer terse action oriented steps.
+	DO NOT be verbose or give explanations in this step. 
+	DO only return the plan.`
 const ollamaSystemPrompt =
 	() => `You are a coding assistant integrated into VS Code, powered by the llama3.1 7B language model. Your primary function is to assist users with coding tasks, provide explanations, and offer suggestions for code improvement.
 
@@ -209,6 +222,23 @@ const ollamaTools: Tool[] = [
 			},
 		}
 	},
+	{
+		type: "function",
+		function: {
+			name: "planner",
+			description: "Generate a high-level plan with general, bulleted instructions for completing a task.",
+			parameters: {
+				type: "object",
+				properties: {
+					task: {
+						type: "string",
+						description: "The task to generate a plan for.",
+					},
+				},
+				required: ["task"],
+			},
+		}
+	},
 ]
 
 
@@ -234,43 +264,66 @@ export class OllamaHandler implements ApiHandler {
 		tools: Anthropic.Messages.Tool[]
 	): Promise<ApiHandlerMessageResponse> {
 		const modelId = this.getModel().id
-		// Convert Anthropic messages to Ollama format
 		const ollamaMessages = this.convertToOllamaMessages(ollamaSystemPrompt.toString(), messages)
 
-		const response = await this.ollama.chat({
+		// Call the planner model first
+		const plannerResponse = await this.ollama.chat({
 			model: modelId,
-			messages: ollamaMessages,
+			messages: [...ollamaMessages, { role: "user", content: planningPrompt.toString() }],
 			stream: false,
-			tools: ollamaTools
 		});
 
-		// Convert Ollama response to Anthropic format
-		const anthropicMessage: Anthropic.Messages.Message = {
+		// Parse the planner's response into bullet points
+		const planSteps = plannerResponse.message.content.split('\n').filter(step => step.trim().startsWith('-'));
+
+		let combinedResponse = '';
+		const toolCallResults = [];
+		let previousCalls: string[] = [];
+
+		// Loop over the plan steps and make tool calls for each
+		for (const step of planSteps) {
+			const stepResponse = await this.ollama.chat({
+				model: modelId,
+				messages: [...ollamaMessages, { role: "user", content: "Execute this step: " + step + "using the previous steps as context. Previous steps: " + previousCalls.forEach(x => x + "\n") }],
+				stream: false,
+				tools: ollamaTools
+			});
+
+			previousCalls.push(step);
+
+			combinedResponse += stepResponse.message.content + '\n\n';
+
+			if (stepResponse.message.tool_calls && stepResponse.message.tool_calls.length > 0) {
+				toolCallResults.push(...this.convertOllamaToolToAnthropicToolUseBlock(stepResponse.message));
+			}
+		}
+
+		// Create the final Anthropic message
+		let anthropicMessage: Anthropic.Messages.Message = {
 			id: `ollama-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
 			type: "message",
 			role: "assistant",
 			content: [
 				{
 					type: "text",
-					text: response.message.content,
+					text: combinedResponse.trim(),
 				},
+				...toolCallResults
 			],
 			model: this.getModel().id,
-			stop_reason: response.message.tool_calls ? "tool_use" : "end_turn",
+			stop_reason: toolCallResults.length > 0 ? "tool_use" : "end_turn",
 			stop_sequence: null,
 			usage: {
-				input_tokens: response.prompt_eval_count,
-				output_tokens: response.eval_count,
+				input_tokens: plannerResponse.prompt_eval_count,
+				output_tokens: plannerResponse.eval_count,
 			},
 		}
 
-		if (response.message.tool_calls && response.message.tool_calls.length > 0) {
-			anthropicMessage.content.push(
-				...this.convertOllamaToolToAnthropicToolUseBlock(response.message)
-			);
+		console.log("message", anthropicMessage)
+		return {
+			message: anthropicMessage,
+			userCredits: 0,
 		}
-
-		return { message: anthropicMessage }
 	}
 
 	convertOllamaToolToAnthropicToolUseBlock(ollamaMessage: any): Anthropic.ToolUseBlock[] {
@@ -296,7 +349,7 @@ export class OllamaHandler implements ApiHandler {
 
 			return {
 				type: "tool_use",
-				id: toolCall.function.id, // do we need to set a random number here?
+				id: `tool-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
 				name: toolCall.function.name,
 				input: input,
 			};
